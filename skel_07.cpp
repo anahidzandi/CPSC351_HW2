@@ -138,7 +138,16 @@ int main(int argc, char** argv)
 	{
 
 		/** TODO: create two pipes **/
+		if(pipe(parentToChildPipe) == -1){
+			perror("Error occured when creating parentToChildPipe pipe\n");
+			exit(-1);
+		}
 
+		if(pipe(childToParentPipe) == -1){
+			perror("Error occured when creating childToParentPipe pipe\n");
+			exit(-1);
+		}
+		
 		/* Fork a child process and save the id */
 		if ((pid = fork()) < 0)
 		{
@@ -150,7 +159,16 @@ int main(int argc, char** argv)
 
 		{
 			/** TODO: close the unused ends of two pipes **/
-
+			if(close(parentToChildPipe[WRITE_END] == -1)){
+			perror("parentToChildPipe failed to close write\n");
+			exit(-1);
+		    }
+				if(close(childToParentPipe[READ_END] == -1)){
+			perror("childToParentPipe failed to close read\n");
+			exit(-1);
+		    }
+			
+			
 			/* Compute the hash */
 			computeHash(hashProgs[hashAlgNum]);
 		}
