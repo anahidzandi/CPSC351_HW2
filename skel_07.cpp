@@ -56,29 +56,33 @@ void computeHash(const string& hashProgName)
 	
 	
 	/** TODO: Now, lets read a message from the parent **/
-	
 	/* Glue together a command line <PROGRAM NAME>. 
  	 * For example, sha512sum fileName.
  	 */
+	if (read(parentToChildPipe[READ_END], fileNameRecv, HASH_VALUE_LENGTH) < 0)
+	{
+		perror("read");
+		exit(-1);
+	}
 	string cmdLine(hashProgName);
 	cmdLine += " ";
 	cmdLine += fileNameRecv;	
 	
     /* TODO: Open the pipe to the program (specified in cmdLine) 
 	* using popen() and save the ouput into hashValue. See popen.cpp
-    * for examples using popen.
-	.
-	.
-	.
-	*/
-		
-	
-		
-	/* TODO: Send a string to the parent 
- 	 .
-	 .
-	 .
-	*/
+    * for examples using popen.*/
+	FILE *hashOut = popen(cmdLine.c_str(), "r");
+	if(fread(hashValue, sizeof(char), sizeof(char) * HASH_VALUE_LENGTH, hashOut) < 0)
+	{
+		perror("fread");
+		exit(-1);
+	}
+	/* TODO: Send a string to the parent */
+	if (write(childToParentPipe[WRITE_END], hashValue, strlen(hashValue)) < 0)
+	{
+		perror("write");
+		exit(-1);
+	}
 
 	/* The child terminates */
 	exit(0);
@@ -91,7 +95,16 @@ void parentFunc(const string& hashProgName)
 	/* I am the parent */
 
 	/** TODO: close the unused ends of two pipes. **/
-
+	if (close(childToParentPipe[WRITE_END]) < 0)
+	{
+		perror("close");
+		exit(-1);
+	}
+	if (close(parentToChildPipe[READ_END]) < 0)
+	{
+		perror("close");
+		exit(-1);
+	}
 	/* The buffer to hold the string received from the child */
 	char hashValue[HASH_VALUE_LENGTH];
 
@@ -100,16 +113,19 @@ void parentFunc(const string& hashProgName)
 
 
 	/* TODO: Send the string to the child
-	 .
-	 .
-	 .
 	 */
-
+	if (write(parentToChildPipe[WRITE_END], fileName.c_str(), strlen(fileName.c_str())) < 0)
+	{
+		perror("write");
+		exit(-1);
+	}
 	 /* TODO: Read the string sent by the child
-	  .
-	  .
-	  .
 	  */
+	if (read(childToParentPipe[READ_END], hashValue, HASH_VALUE_LENGTH) < 0)
+	{
+		perror("read");
+		exit(-1);
+	}
 
 	  /* Print the hash value */
 	  fprintf(stdout, "%s HASH VALUE: %s\n", hashProgName.c_str(), hashValue);
@@ -119,7 +135,6 @@ void parentFunc(const string& hashProgName)
 
 int main(int argc, char** argv)
 {
-	
 	/* Check for errors */
 	if(argc < 2)
 	{
@@ -138,13 +153,14 @@ int main(int argc, char** argv)
 	{
 
 		/** TODO: create two pipes **/
-		if(pipe(parentToChildPipe) == -1){
-			perror("Error occured when creating parentToChildPipe pipe\n");
+		if (pipe(childToParentPipe) < 0)
+		{
+			perror("child to parent pipe");
 			exit(-1);
 		}
-
-		if(pipe(childToParentPipe) == -1){
-			perror("Error occured when creating childToParentPipe pipe\n");
+		if (pipe(parentToChildPipe) < 0)
+		{
+			perror("parent to child pipe");
 			exit(-1);
 		}
 		
@@ -159,16 +175,16 @@ int main(int argc, char** argv)
 
 		{
 			/** TODO: close the unused ends of two pipes **/
-			if(close(parentToChildPipe[WRITE_END] == -1)){
-			perror("parentToChildPipe failed to close write\n");
-			exit(-1);
-		    }
-				if(close(childToParentPipe[READ_END] == -1)){
-			perror("childToParentPipe failed to close read\n");
-			exit(-1);
-		    }
-			
-			
+			if (close(parentToChildPipe[WRITE_END]) < 0)
+			{
+				perror("close");
+				exit(-1);
+			}
+			if (close(childToParentPipe[READ_END]) < 0)
+			{
+				perror("close");
+				exit(-1);
+			}
 			/* Compute the hash */
 			computeHash(hashProgs[hashAlgNum]);
 		}
